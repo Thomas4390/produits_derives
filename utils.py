@@ -161,6 +161,65 @@ def compute_crr_tree_puts_df(
 
     return df_crr
 
+def plot_crr_tree_puts(
+    S0: float,
+    K: pd.Series,
+    T: float,
+    r: float,
+    sigma: pd.Series,
+    N_range: np.array = np.arange(2, 101),
+    bps: float = 0.0001,
+    zoom_factor: int = 20
+) -> None:
+    """Plot the CRR tree put prices for a vector of strike prices and a vector of volatilities.
+    :param S0: initial stock price
+    :param K: vector of strike prices
+    :param T: maturity
+    :param r: risk-free interest rate
+    :param sigma: vector of volatilities
+    :param N_range: range of number of time steps
+    :param zoom_factor: Lower the number to zoom in
+    :param bps: basis points"""
+
+    df_crr = compute_crr_tree_puts_df(S0=S0,
+                                      K=K,
+                                      T=T,
+                                      r=r,
+                                      sigma=sigma,
+                                      N_range=N_range)
+
+    plt.style.use('seaborn-v0_8-deep')
+
+    info = get_info()
+
+    figsize = (15, 20)
+    fig, axes = plt.subplots(3, 2, figsize=figsize)
+
+    for i in range(3):
+        for j in range(2):
+            k = i * 2 + j
+            plt.sca(axes[i, j])
+            plt.plot(N_range, df_crr[f'Put_{k}'])
+            plt.hlines(info['Put'].iloc[k], N_range[0], N_range[-1],
+                       linestyles='dashed', color='red')
+            plt.hlines(info['Put'].iloc[k] + bps, N_range[0], N_range[-1],
+                       linestyles='dotted', color='orange')
+            plt.hlines(info['Put'].iloc[k] - bps, N_range[0], N_range[-1],
+                       linestyles='dotted', color='orange')
+            plt.ylim(info['Put'].iloc[k] - bps * zoom_factor,
+                     info['Put'].iloc[k] + bps * zoom_factor)
+            plt.legend(["CRR", "Put", "+1bp", "-1bp"])
+            plt.xlabel("N")
+            plt.ylabel("Put")
+            plt.title(
+                f"Prix Put par CRR en fonction de N pour K={info['Strike'].iloc[k]}")
+    return None
+
+def CRR_tree_adjusted():
+    pass
+
+
+
 
 if __name__ == "__main__":
     pass
