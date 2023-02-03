@@ -158,6 +158,7 @@ def compute_crr_tree_puts_df(
     ).T
     columns = [f"Put_{i}" for i in range(len(K))]
     df_crr = matrix_to_dataframe(crr_values, columns=columns)
+    df_crr.index = N_range
 
     return df_crr
 
