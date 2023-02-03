@@ -34,8 +34,8 @@ def compute_implied_volatility_by_bisection(
         T: float,
         r: float,
         Put: float,
-        tol: float = 1e-6,
-        max_iter: int = 1000,
+        tol: float = 1e-8,
+        max_iter: int = 2000,
 ) -> float:
     """Compute the implied volatility by bisection method.
     :param S0: initial stock price
@@ -229,8 +229,44 @@ def plot_crr_tree_puts(
     return None
 
 
-def CRR_tree_adjusted():
-    pass
+def CRR_Tree_adjusted(S0: float, K: float, T: float, r: float, sigma: float,
+             N: int) -> float:
+    """Cox-Ross-Rubinstein binomial tree for European put option.
+    :param S0: initial stock price
+    :param K: strike price
+    :param T: maturity
+    :param r: risk-free interest rate
+    :param sigma: volatility
+    :param N: number of time steps
+    :return: European put option price"""
+
+    u = math.exp(sigma * math.sqrt(T / N))
+    d = math.exp(-sigma * math.sqrt(T / N))
+
+    p = ((math.exp(r * T / N)) - d) / (u - d)
+    q = 1 - p
+
+    discount = math.exp(-r * T / N)
+
+    Sn = np.zeros(N + 1)
+    puts = np.zeros(N + 1)
+
+    Sn[0] = S0 * d ** N
+
+    for j in range(1, N + 1):
+        Sn[j] = Sn[j - 1] * (u / d)
+
+
+    for j in range(1, N):
+        puts[j] = max(K - Sn[j], 0)
+    puts[-1] = compute_put_option(S0=Sn[-2], K=K, T=T/N, r=r, sigma=sigma)
+
+
+    for i in range(N, 0, -1):
+        for j in range(0, i):
+            puts[j] = discount * (p * puts[j + 1] + q * puts[j])
+
+    return puts[0]
 
 
 if __name__ == "__main__":
