@@ -81,6 +81,10 @@ def CRR_Tree(S: float, K: float, T: float, r: float, sigma: float, N: int)\
 
     return puts[0]
 
+# Convert matrix to dataframe
+def matrix_to_dataframe(matrix: ndarray, columns: Iterable[str]) -> pd.DataFrame:
+    return pd.DataFrame(matrix, columns=columns)
+
 
 if __name__ == '__main__':
     pass
