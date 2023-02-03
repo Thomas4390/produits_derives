@@ -67,8 +67,7 @@ def compute_implied_volatility_by_bisection(
 
 
 def compute_implicit_vol_array(
-    S0: float, K: ndarray, T: float, r: float, Put: ndarray
-) -> ndarray:
+    S0: float, K: ndarray, T: float, r: float, Put: ndarray) -> ndarray:
     """Compute the implied volatility for a vector of strike prices and put prices.
     :param S0: initial stock price
     :param K: vector of strike prices
@@ -84,10 +83,10 @@ def compute_implicit_vol_array(
     )
 
 
-def CRR_Tree(S: float, K: float, T: float, r: float, sigma: float, N: int) -> float:
+def CRR_Tree(S0: float, K: float, T: float, r: float, sigma: float, N: int) -> float:
 
     """Cox-Ross-Rubinstein binomial tree for European put option.
-    :param S: initial stock price
+    :param S0: initial stock price
     :param K: strike price
     :param T: maturity
     :param r: risk-free interest rate
@@ -103,16 +102,16 @@ def CRR_Tree(S: float, K: float, T: float, r: float, sigma: float, N: int) -> fl
 
     discount = math.exp(-r * T / N)
 
-    S_t = np.zeros(N + 1)
+    Sn = np.zeros(N + 1)
     puts = np.zeros(N + 1)
 
-    S_t[0] = S * d**N
+    Sn[0] = S0 * d**N
 
     for j in range(1, N + 1):
-        S_t[j] = S_t[j - 1] * (u / d)
+        Sn[j] = Sn[j - 1] * (u / d)
 
     for j in range(1, N + 1):
-        puts[j] = max(K - S_t[j], 0)
+        puts[j] = max(K - Sn[j], 0)
 
     for i in range(N, 0, -1):
         for j in range(0, i):
@@ -129,6 +128,38 @@ def matrix_to_dataframe(matrix: ndarray, columns: list[str]) -> pd.DataFrame:
     :return: dataframe"""
 
     return pd.DataFrame(matrix, columns=columns)
+
+
+def compute_crr_tree_puts_df(
+    S0: float,
+    K: pd.Series,
+    T: float,
+    r: float,
+    sigma: pd.Series,
+    N_range: np.array = np.arange(2, 101),
+) -> pd.DataFrame:
+    """Compute the CRR tree for a vector of strike prices and a vector of volatilities.
+    :param S0: initial stock price
+    :param K: vector of strike prices
+    :param T: maturity
+    :param r: risk-free interest rate
+    :param sigma: vector of volatilities
+    :param N_range: range of number of time steps
+    :return: dataframe of CRR tree put prices"""
+
+    crr_values = np.array(
+        [
+            [
+                CRR_Tree(S0=S0, K=K.iloc[i], T=T, r=r, sigma=sigma.iloc[i], N=N)
+                for N in N_range
+            ]
+            for i in range(len(K))
+        ]
+    ).T
+    columns = [f"Put_{i}" for i in range(len(K))]
+    df_crr = matrix_to_dataframe(crr_values, columns=columns)
+
+    return df_crr
 
 
 if __name__ == "__main__":
