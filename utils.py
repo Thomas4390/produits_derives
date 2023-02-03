@@ -13,7 +13,8 @@ def get_info():
     return pd.DataFrame(np.vstack([K, Put]).T, columns=["Strike", "Put"])
 
 
-def compute_put_option(sigma: float, S0: float, K: float, T: float, r: float) -> float:
+def compute_put_option(sigma: float, S0: float, K: float, T: float,
+                       r: float) -> float:
     """Compute the price of a European put option.
     :param sigma: volatility
     :param S0: initial stock price
@@ -22,19 +23,19 @@ def compute_put_option(sigma: float, S0: float, K: float, T: float, r: float) ->
     :param r: risk-free interest rate
     :return: European put option price"""
 
-    d1 = (np.log(S0 / K) + (r + sigma**2 / 2) * T) / (sigma * np.sqrt(T))
+    d1 = (np.log(S0 / K) + (r + sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
     return K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1)
 
 
 def compute_implied_volatility_by_bisection(
-    S0: float,
-    K: float,
-    T: float,
-    r: float,
-    Put: float,
-    tol: float = 1e-6,
-    max_iter: int = 1000,
+        S0: float,
+        K: float,
+        T: float,
+        r: float,
+        Put: float,
+        tol: float = 1e-6,
+        max_iter: int = 1000,
 ) -> float:
     """Compute the implied volatility by bisection method.
     :param S0: initial stock price
@@ -67,7 +68,7 @@ def compute_implied_volatility_by_bisection(
 
 
 def compute_implicit_vol_array(
-    S0: float, K: ndarray, T: float, r: float, Put: ndarray) -> ndarray:
+        S0: float, K: ndarray, T: float, r: float, Put: ndarray) -> ndarray:
     """Compute the implied volatility for a vector of strike prices and put prices.
     :param S0: initial stock price
     :param K: vector of strike prices
@@ -77,14 +78,15 @@ def compute_implicit_vol_array(
     :return: vector of implied volatilities"""
     return np.array(
         [
-            compute_implied_volatility_by_bisection(S0=S0, K=K[i], T=T, r=r, Put=Put[i])
+            compute_implied_volatility_by_bisection(S0=S0, K=K[i], T=T, r=r,
+                                                    Put=Put[i])
             for i in range(len(K))
         ]
     )
 
 
-def CRR_Tree(S0: float, K: float, T: float, r: float, sigma: float, N: int) -> float:
-
+def CRR_Tree(S0: float, K: float, T: float, r: float, sigma: float,
+             N: int) -> float:
     """Cox-Ross-Rubinstein binomial tree for European put option.
     :param S0: initial stock price
     :param K: strike price
@@ -105,7 +107,7 @@ def CRR_Tree(S0: float, K: float, T: float, r: float, sigma: float, N: int) -> f
     Sn = np.zeros(N + 1)
     puts = np.zeros(N + 1)
 
-    Sn[0] = S0 * d**N
+    Sn[0] = S0 * d ** N
 
     for j in range(1, N + 1):
         Sn[j] = Sn[j - 1] * (u / d)
@@ -131,12 +133,12 @@ def matrix_to_dataframe(matrix: ndarray, columns: list[str]) -> pd.DataFrame:
 
 
 def compute_crr_tree_puts_df(
-    S0: float,
-    K: pd.Series,
-    T: float,
-    r: float,
-    sigma: pd.Series,
-    N_range: np.array = np.arange(2, 101),
+        S0: float,
+        K: pd.Series,
+        T: float,
+        r: float,
+        sigma: pd.Series,
+        N_range: np.array = np.arange(2, 101),
 ) -> pd.DataFrame:
     """Compute the CRR tree for a vector of strike prices and a vector of volatilities.
     :param S0: initial stock price
@@ -150,7 +152,8 @@ def compute_crr_tree_puts_df(
     crr_values = np.array(
         [
             [
-                CRR_Tree(S0=S0, K=K.iloc[i], T=T, r=r, sigma=sigma.iloc[i], N=N)
+                CRR_Tree(S0=S0, K=K.iloc[i], T=T, r=r, sigma=sigma.iloc[i],
+                         N=N)
                 for N in N_range
             ]
             for i in range(len(K))
@@ -162,15 +165,16 @@ def compute_crr_tree_puts_df(
 
     return df_crr
 
+
 def plot_crr_tree_puts(
-    S0: float,
-    K: pd.Series,
-    T: float,
-    r: float,
-    sigma: pd.Series,
-    N_range: np.array = np.arange(2, 101),
-    bps: float = 0.0001,
-    zoom_factor: int = 20
+        S0: float,
+        K: pd.Series,
+        T: float,
+        r: float,
+        sigma: pd.Series,
+        N_range: np.array = np.arange(2, 101),
+        bps: float = 0.0001,
+        zoom_factor: int = 20
 ) -> None:
     """Plot the CRR tree put prices for a vector of strike prices and a vector of volatilities.
     :param S0: initial stock price
@@ -212,14 +216,21 @@ def plot_crr_tree_puts(
             plt.legend(["CRR", "Put", "+1bp", "-1bp"])
             plt.xlabel("N")
             plt.ylabel("Put")
+            # Met le y label à droite de l'axe
+            axes[i, j].yaxis.set_label_position("right")
             plt.title(
                 f"Prix Put par CRR en fonction de N pour K={info['Strike'].iloc[k]}")
+            # Save only the actual axis in the folder figures
+            extent = axes[i, j].get_window_extent().transformed(
+                fig.dpi_scale_trans.inverted())
+            fig.savefig(f'figures/Put_{k}_convergence{max(N_range)}.png',
+                        bbox_inches=extent.expanded(1.3, 1.2))
+
     return None
+
 
 def CRR_tree_adjusted():
     pass
-
-
 
 
 if __name__ == "__main__":
