@@ -236,6 +236,8 @@ def plot_crr_tree_puts(
 
 
 ############### Compute CRR tree adjusted ###############
+
+
 def CRR_Tree_adjusted(S0: float, K: float, T: float, r: float, sigma: float,
              N: int) -> float:
     """Cox-Ross-Rubinstein binomial tree for European put option.
@@ -258,7 +260,7 @@ def CRR_Tree_adjusted(S0: float, K: float, T: float, r: float, sigma: float,
     Sn = np.zeros(N)
     puts = np.zeros(N)
 
-    Sn[0] = S0 * d ** (N-1) # On veut les prix en N-1
+    Sn[0] = S0 * d ** (N-1) 
 
     for j in range(1, N): #Avoir le S à l'avant dernier noeud
         Sn[j] = Sn[j - 1] * (u / d)
