@@ -5,23 +5,27 @@ from numpy import ndarray
 from scipy.stats import norm
 import math
 import matplotlib.pyplot as plt
+import seaborn
 
 
+############# Get data #############
 def get_info():
     K = np.array([80, 90, 97.5, 102.5, 110, 120])
     Put = np.array([0.1900, 0.6907, 1.6529, 3.3409, 9.8399, 19.5805])
     return pd.DataFrame(np.vstack([K, Put]).T, columns=["Strike", "Put"])
 
 
+
+
 def compute_put_option(sigma: float, S0: float, K: float, T: float,
                        r: float) -> float:
-    """Compute the price of a European put option.
-    :param sigma: volatility
+    """ Compute the price of a European put option.
+    :param sigma: volatility 
     :param S0: initial stock price
     :param K: strike price
     :param T: maturity
     :param r: risk-free interest rate
-    :return: European put option price"""
+    :return: European put option price """
 
     d1 = (np.log(S0 / K) + (r + sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
@@ -104,13 +108,14 @@ def CRR_Tree(S0: float, K: float, T: float, r: float, sigma: float,
 
     discount = math.exp(-r * T / N)
 
+
     Sn = np.zeros(N + 1)
     puts = np.zeros(N + 1)
 
     Sn[0] = S0 * d ** N
 
     for j in range(1, N + 1):
-        Sn[j] = Sn[j - 1] * (u / d)
+        Sn[j] = Sn[j - 1] * (u / d) 
 
     for j in range(1, N + 1):
         puts[j] = max(K - Sn[j], 0)
@@ -193,7 +198,7 @@ def plot_crr_tree_puts(
                                       sigma=sigma,
                                       N_range=N_range)
 
-    plt.style.use('seaborn-v0_8-deep')
+    #plt.style.use('seaborn-v0_8-deep')
 
     info = get_info()
 
@@ -229,6 +234,8 @@ def plot_crr_tree_puts(
     return None
 
 
+
+############### Compute CRR tree adjusted ###############
 def CRR_Tree_adjusted(S0: float, K: float, T: float, r: float, sigma: float,
              N: int) -> float:
     """Cox-Ross-Rubinstein binomial tree for European put option.
@@ -248,25 +255,135 @@ def CRR_Tree_adjusted(S0: float, K: float, T: float, r: float, sigma: float,
 
     discount = math.exp(-r * T / N)
 
-    Sn = np.zeros(N + 1)
-    puts = np.zeros(N + 1)
+    Sn = np.zeros(N)
+    puts = np.zeros(N)
 
-    Sn[0] = S0 * d ** N
+    Sn[0] = S0 * d ** (N-1) # On veut les prix en N-1
 
-    for j in range(1, N + 1):
+    for j in range(1, N): #Avoir le S à l'avant dernier noeud
         Sn[j] = Sn[j - 1] * (u / d)
 
 
-    for j in range(1, N):
-        puts[j] = max(K - Sn[j], 0)
-    puts[-1] = compute_put_option(S0=Sn[-2], K=K, T=T/N, r=r, sigma=sigma)
+    for j in range(N):
+        puts[j] = compute_put_option(S0=Sn[j], K=K, T=T/N, r=r, sigma=sigma)
 
 
-    for i in range(N, 0, -1):
+    for i in range(N-1, 0, -1):
         for j in range(0, i):
             puts[j] = discount * (p * puts[j + 1] + q * puts[j])
 
     return puts[0]
+
+
+
+def compute_crr_tree_puts_adj_df(
+        S0: float,
+        K: pd.Series,
+        T: float,
+        r: float,
+        sigma: pd.Series,
+        N_range: np.array = np.arange(2, 101),
+) -> pd.DataFrame:
+    """Compute the CRR tree for a vector of strike prices and a vector of volatilities.
+    :param S0: initial stock price
+    :param K: vector of strike prices
+    :param T: maturity
+    :param r: risk-free interest rate
+    :param sigma: vector of volatilities
+    :param N_range: range of number of time steps
+    :return: dataframe of CRR tree put prices"""
+
+    crr_values = np.array(
+        [
+            [
+                CRR_Tree_adjusted(S0=S0, K=K.iloc[i], T=T, r=r, sigma=sigma.iloc[i],
+                         N=N)
+                for N in N_range
+            ]
+            for i in range(len(K))
+        ]
+    ).T
+    columns = [f"Put_{i}" for i in range(len(K))]
+    df_crr = matrix_to_dataframe(crr_values, columns=columns)
+    df_crr.index = N_range
+
+    return df_crr
+
+
+
+
+
+
+
+
+
+def plot_crr_tree_puts_adj(
+        S0: float,
+        K: pd.Series,
+        T: float,
+        r: float,
+        sigma: pd.Series,
+        N_range: np.array = np.arange(2, 101),
+        bps: float = 0.0001,
+        zoom_factor: int = 20
+) -> None:
+    """Plot the CRR tree put prices for a vector of strike prices and a vector of volatilities.
+    :param S0: initial stock price
+    :param K: vector of strike prices
+    :param T: maturity
+    :param r: risk-free interest rate
+    :param sigma: vector of volatilities
+    :param N_range: range of number of time steps
+    :param zoom_factor: Lower the number to zoom in
+    :param bps: basis points"""
+
+    df_crr = compute_crr_tree_puts_adj_df(S0=S0,
+                                      K=K,
+                                      T=T,
+                                      r=r,
+                                      sigma=sigma,
+                                      N_range=N_range)
+
+    #plt.style.use('seaborn-v0_8-deep')
+
+    info = get_info()
+
+    figsize = (15, 20)
+    fig, axes = plt.subplots(3, 2, figsize=figsize)
+
+    for i in range(3):
+        for j in range(2):
+            k = i * 2 + j
+            plt.sca(axes[i, j])
+            plt.plot(N_range, df_crr[f'Put_{k}'])
+            plt.hlines(info['Put'].iloc[k], N_range[0], N_range[-1],
+                       linestyles='dashed', color='red')
+            plt.hlines(info['Put'].iloc[k] + bps, N_range[0], N_range[-1],
+                       linestyles='dotted', color='orange')
+            plt.hlines(info['Put'].iloc[k] - bps, N_range[0], N_range[-1],
+                       linestyles='dotted', color='orange')
+            plt.ylim(info['Put'].iloc[k] - bps * zoom_factor,
+                     info['Put'].iloc[k] + bps * zoom_factor)
+            plt.legend(["CRR", "Put", "+1bp", "-1bp"])
+            plt.xlabel("N")
+            plt.ylabel("Put")
+            # Met le y label à droite de l'axe
+            axes[i, j].yaxis.set_label_position("right")
+            plt.title(
+                f"Prix Put par CRR en fonction de N pour K={info['Strike'].iloc[k]}")
+            # Save only the actual axis in the folder figures
+            extent = axes[i, j].get_window_extent().transformed(
+                fig.dpi_scale_trans.inverted())
+            fig.savefig(f'figures/Put_{k}_convergence{max(N_range)}.png',
+                        bbox_inches=extent.expanded(1.3, 1.2))
+
+    return None
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
