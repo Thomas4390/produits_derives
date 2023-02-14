@@ -79,26 +79,23 @@ def CRR_tree(S, K, T, r, sigma, Type, N, ret_gamma=False):
     q  = (math.exp(r*dt) - d) / (u - d) 
 
     # Calcul des valeurs finales du put dans l'arbre
-    f_end = np.zeros(N + 1)
-    for i in range(0, N + 1):
-        S_i      = S * (u ** (N - i)) * (d ** (i))
-        f_end[i] = max(K - S_i, 0)
+    f      = np.zeros((N+1, N+1))
+    f[N,:] = np.maximum(0, K - S * (u ** np.flip(np.arange(N+1))) * (d ** np.arange(N+1)))
+
 
     # Calcul de la valeur du put américain par induction inverse
     # Européen
     if Type == 0 : 
-        for i in range(N, 0, -1):
-            for j in range(0, i):
-                f_end[j] = df * (q * f_end[j] + (1 - q) * f_end[j + 1])
-
+        for i in range(N-1, -1, -1):
+            f[i, :i+1] = df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2])
+    
     # Américain
     else:
-        for i in range(N, 0, -1):
-            for j in range(0, i):
-                S_j      = S * (u ** (i-j-1)) * (d ** j)
-                f_end[j] = max(df * (q * f_end[j] + (1 - q) * f_end[j + 1]), K - S_j)
+        for i in range(N-1, -1, -1):
+            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** (i - np.arange(i + 1))))
+            f[i, :i+1] = np.maximum(S_j, df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2]))
 
-    put_value = f_end[0]
+    put_value = f[0][0]
             
     return put_value
 
@@ -115,34 +112,31 @@ def CRR_tree_BD(S, K, T, r, sigma, Type, N, ret_gamma=False):
     q  = (math.exp(r*dt) - d) / (u - d) 
 
     # Calcul des valeurs finales du put dans l'arbre
-    f_end = np.zeros(N)
-    for i in range(0, N):
-        S_i      = S * (u ** (N - i - 1)) * (d ** (i))
-        f_end[i] = option_price(S = S_i, K = K, r = r, y = 0, T = dt, sigma = sigma, is_call = False)
+    f        = np.zeros((N, N))
+    S_end    = S * (u ** np.flip(np.arange(N)) * (d ** np.arange(N)))
+    f[N-1,:] = option_price(S = S_end, K = K, r = r, y = 0, T = dt, sigma = sigma, is_call = False)
 
     # Calcul de la valeur du put américain par induction inverse
     # Européen
     if Type == 0 : 
-        for i in range(N-1, 0, -1):
-            for j in range(0, i):
-                f_end[j] = df * (q * f_end[j] + (1 - q) * f_end[j + 1])
-                
-            if i == 3:
-                p_uu = f_end[0] 
-                p_ud = f_end[1]
-                p_dd = f_end[2]
+       for i in range(N-2, -1, -1):
+            f[i, :i+1] = df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2])
+    
+            if i == 2:
+                p_uu = f[i][0]
+                p_ud = f[i][1]
+                p_dd = f[i][2]
                 
     # Américain
     else:
-        for i in range(N-1, 0, -1):
-            for j in range(0, i):
-                S_j      = S * (u ** (i-j-1)) * (d ** j)
-                f_end[j] = max(df * (q * f_end[j] + (1 - q) * f_end[j + 1]), K - S_j)
+       for i in range(N-2, -1, -1):
+            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** (i - np.arange(i + 1))))
+            f[i, :i+1] = np.maximum(S_j, df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2]))
 
-            if i == 3:
-                p_uu = f_end[0] 
-                p_ud = f_end[1]
-                p_dd = f_end[2]
+            if i == 2:
+                p_uu = f[i][0] 
+                p_ud = f[i][1]
+                p_dd = f[i][2]
 
     if ret_gamma:
         gamma_0 = (p_uu - 2*p_ud + p_dd) / (((u - d) * S) ** 2)
@@ -150,10 +144,10 @@ def CRR_tree_BD(S, K, T, r, sigma, Type, N, ret_gamma=False):
         gamma_2 = (((p_uu - p_ud) / (((u**2) * S) - S)) - ((p_ud - p_dd) / (-((d**2) * S) + S))) / (0.5 * S * (u**2 - d**2))
         gamma   = [gamma_0, gamma_1, gamma_2]
     
-        return f_end[0], gamma
+        return f[0][0], gamma
     
     else:
-        return f_end[0]
+        return f[0][0]
             
 
 
@@ -305,9 +299,3 @@ def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int 
             plt.title(
                 f"Gamma du Put par CRR en fonction de N pour K={info['Strike'].iloc[k]}")
     return None 
-
-
-
-
-
-
