@@ -59,6 +59,35 @@ def implied_volatility(opt_price, S, K, r, y, T, is_call, init_vol=0.6):
         return option_price(S,K,r,y,T,sig,is_call) - opt_price
     return fsolve(pricing_error, init_vol)
 
+
+def antithetic_normal(n_periods, n_paths):
+    assert n_paths%2 == 0, 'n_paths must be an even number'
+    n2 = int(n_paths/2)
+    z = np.random.normal(0,1, (n_periods, n2))
+    return np.hstack((z,-z))
+
+
+def simulate_underlying(S0, r, y, sigma, dt, shocks):
+    '''Simulate the GMB based on the user-provided standard normal shocks
+
+    Parameters:
+        S, r, y, sigma, : as usual
+        dt     : the time step length in the simulation
+        shocks : A (n_steps x n_sim) matrix of standard Normal shocks for a 
+                 simulation with n_steps time steps and n_sim paths
+
+    Returns:
+        S : A (n_steps+1 x n_sim) matrix with n_sim paths of the underlying simulated over n_steps time steps, 
+            starting at time 0
+    '''
+    n_steps, n_sim = shocks.shape
+    S = np.empty((n_steps+1,n_sim))
+    S[0,:] = S0;
+    for tn in range(n_steps):
+        S[tn+1,:] = S[tn,:]*np.exp( (r-y-0.5*sigma**2)*dt + sigma*np.sqrt(dt)*shocks[tn,:] )
+    return S
+
+
 def plot_implied_vol(S, info):
     '''Plot implied vol. for question 1'''
     plt.plot(info['Strike']/S, info['Implied vol.'], 'o--')
@@ -68,7 +97,7 @@ def plot_implied_vol(S, info):
     plt.grid(linestyle = '--', linewidth = 0.5)
     plt.show()
 
-def CRR_tree(S, K, T, r, sigma, Type, N, ret_gamma=False):
+def CRR_tree(S, K, T, r, sigma, Type, N):
     '''Compute the call or put price with CRR tree'''
 
     # Calcul préliminaire
@@ -92,7 +121,7 @@ def CRR_tree(S, K, T, r, sigma, Type, N, ret_gamma=False):
     # Américain
     else:
         for i in range(N-1, -1, -1):
-            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** (i - np.arange(i + 1))))
+            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** np.arange(i + 1)))
             f[i, :i+1] = np.maximum(S_j, df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2]))
 
     put_value = f[0][0]
@@ -130,7 +159,7 @@ def CRR_tree_BD(S, K, T, r, sigma, Type, N, ret_gamma=False):
     # Américain
     else:
        for i in range(N-2, -1, -1):
-            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** (i - np.arange(i + 1))))
+            S_j        = K - S * (u ** np.flip(np.arange(i + 1)) * (d ** np.arange(i + 1)))
             f[i, :i+1] = np.maximum(S_j, df * (q * f[i+1, :i+1] + (1 - q) * f[i+1, 1:i+2]))
 
             if i == 2:
@@ -299,3 +328,29 @@ def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int 
             plt.title(
                 f"Gamma du Put par CRR en fonction de N pour K={info['Strike'].iloc[k]}")
     return None 
+
+
+""" Définition des tic et toc pour le temps d'exécution """
+import time
+
+def TicTocGenerator():
+    # Generator that returns time differences
+    ti = 0           # initial time
+    tf = time.time() # final time
+    while True:
+        ti = tf
+        tf = time.time()
+        yield tf-ti # returns the time difference
+
+TicToc = TicTocGenerator() # create an instance of the TicTocGen generator
+
+# This will be the main function through which we define both tic() and toc()
+def toc(tempBool=True):
+    # Prints the time difference yielded by generator instance TicToc
+    tempTimeInterval = next(TicToc)
+    if tempBool:
+        print( "Elapsed time: %f seconds.\n" %tempTimeInterval )
+
+def tic():
+    # Records a time in TicToc, marks the beginning of a time interval
+    toc(False)
