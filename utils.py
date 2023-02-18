@@ -254,7 +254,7 @@ def CRR_tree_BD_df(S, K, T, r, sigma, Type, N_Range, ret_gamma = False) :
 def plot_CRR_tree(df_CRR_list, N_Range, bps: float = 0.0001, zoom_factor: int = 20, cross = False):
     '''Plot results for question 2'''
 
-    plt.style.use('seaborn-v0_8-deep')
+    
     info      = get_info()
     figsize   = (15, 20)
     fig, axes = plt.subplots(3, 2, figsize=figsize)
@@ -299,7 +299,7 @@ def plot_CRR_tree(df_CRR_list, N_Range, bps: float = 0.0001, zoom_factor: int = 
 def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int = 20):
     '''Plot results for question 3 (gamma)'''
 
-    plt.style.use('seaborn-v0_8-deep')
+    
     info      = get_info()
     figsize   = (15, 20)
     fig, axes = plt.subplots(3, 2, figsize=figsize)
