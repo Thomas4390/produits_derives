@@ -4,7 +4,7 @@ import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
 
-from scipy.stats import norm
+from scipy.stats    import norm
 from scipy.optimize import fsolve
 
 
@@ -26,6 +26,7 @@ def d2(S, K, r, y, T, sigma):
 
 def delta(S, K, r, y, T, sigma, is_call):  
     '''Return Black, Merton, Scholes delta of the European (call, put)'''
+
     _d1 = d1(S, K, r, y, T, sigma)    
     d_sign = np.where(is_call, 1, -1)
     return d_sign*norm.cdf(d_sign*_d1)
@@ -40,6 +41,7 @@ def gamma(S, K, r, y, T, sigma, is_call=None):
 
 def option_price(S, K, r, y, T, sigma, is_call, ret_delta=False):  
     '''Return Black, Merton, Scholes price of the European option'''
+
     _d1 = d1(S, K, r, y, T, sigma)
     _d2 = _d1 - sigma*np.sqrt(T)
     
@@ -96,6 +98,7 @@ def plot_implied_vol(S, info):
     plt.title("Volatilité implicite en fonction de " + r'$\frac{K}{S_0}$', fontweight="bold")
     plt.grid(linestyle = '--', linewidth = 0.5)
     plt.show()
+
 
 def CRR_tree(S, K, T, r, sigma, Type, N):
     '''Compute the call or put price with CRR tree'''
@@ -179,9 +182,8 @@ def CRR_tree_BD(S, K, T, r, sigma, Type, N, ret_gamma=False):
         return f[0][0]
             
 
-
 def CRR_tree_df(S, K, T, r, sigma, Type, N_Range) :
-    '''Iterates over all puts and conert to Data Frame'''
+    '''Iterates over all puts and converts to Data Frame'''
 
     crr_values = np.array(
         [
@@ -201,7 +203,7 @@ def CRR_tree_df(S, K, T, r, sigma, Type, N_Range) :
 
 
 def CRR_tree_BD_df(S, K, T, r, sigma, Type, N_Range, ret_gamma = False) :
-    '''Iterates over all puts and conert to Data Frame'''
+    '''Iterates over all puts and converts to Data Frame (with adjusmtment)'''
     if not ret_gamma:
         crr_values = np.array(
             [
@@ -310,7 +312,7 @@ def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int 
             
             plt.plot(N_Range, gamma[k]['gamma_0'])
             plt.plot(N_Range, gamma[k]['gamma_1'])
-            plt.plot(N_Range, gamma[k]['gamma_2'],':')
+            plt.plot(N_Range, gamma[k]['gamma_2'],':', linewidth = 3)
                 
             plt.hlines(gamma_bms[k], N_Range[0], N_Range[-1],
                        linestyles='dashed', color='red')
@@ -330,27 +332,29 @@ def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int 
     return None 
 
 
-""" Définition des tic et toc pour le temps d'exécution """
+
+
+#Définition des tic et toc pour le temps d'exécution
 import time
 
 def TicTocGenerator():
-    # Generator that returns time differences
+    
     ti = 0           # initial time
     tf = time.time() # final time
     while True:
         ti = tf
         tf = time.time()
-        yield tf-ti # returns the time difference
+        yield tf-ti 
 
-TicToc = TicTocGenerator() # create an instance of the TicTocGen generator
+TicToc = TicTocGenerator() 
 
-# This will be the main function through which we define both tic() and toc()
+
 def toc(tempBool=True):
-    # Prints the time difference yielded by generator instance TicToc
+
     tempTimeInterval = next(TicToc)
     if tempBool:
         print( "Elapsed time: %f seconds.\n" %tempTimeInterval )
 
 def tic():
-    # Records a time in TicToc, marks the beginning of a time interval
+
     toc(False)
