@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import pandas as pd
-import itertools
 import matplotlib.pyplot as plt
 
 from scipy.stats    import norm
@@ -332,6 +331,80 @@ def plot_gamma(gamma, gamma_bms, N_Range, bps: float = 0.0001, zoom_factor: int 
     return None 
 
 
+def delta_hedging(S_t, T, dt, r, sigma_0, info):
+
+    # Initialisation des vecteurs de temps et du DF de profits
+    S_simul    = S_t.T
+    S_simul_df = pd.DataFrame(S_t.T)
+    t          = np.arange(0, T + dt, dt)
+    profit     = pd.DataFrame(np.zeros((len(S_t[0]), len(info))))
+
+    # Boucle pour itérer sur les différents puts
+    for j, _ in info.iterrows():
+        
+        # Données
+        IV       = info["IV"][j]
+        K        = info["Strike"][j]
+
+        # Calcul de la prime et du delta du put
+        sigma    = np.sqrt((sigma_0 ** 2) + ((T - t) / T) * ((IV ** 2) - sigma_0 **2))
+        delta_g1 = delta(S = S_simul, K = K, r = r, y = 0, T = T - t, sigma = sigma, is_call = False)
+        g_1      = option_price(S = S_simul, K = K, r = r, y = 0, T = T - t, sigma = sigma , is_call = False)
+
+        # ASJ nécéssaire au delta hedging
+        n_g1     = -1
+        n_S      = pd.DataFrame(-(n_g1 * delta_g1))
+        d_nS     = n_S.diff(axis = 1).fillna(n_S.iloc[0,0])
+
+        # Calcul de la valeur du prêt
+        n_B    = pd.DataFrame(np.zeros((len(n_S), len(t))))
+        n_B[0] = -(n_g1 * g_1[0][0] + d_nS[0] * S_simul[0][0])
+        n_B[n_B.columns[1:]] = (-d_nS[d_nS.columns[1:]] * S_simul_df[S_simul_df.columns[1:]]).cumsum(axis = 1) + n_B[0][0]
+
+        # Calcul des profit sur l'ASJ
+        temp         = S_simul_df.diff(axis = 1).dropna(axis = 1) 
+        temp.columns = range(temp.columns.size)
+        S_profit     = (temp * n_S[n_S.columns[:-1]]).sum(axis = 1)
+
+        # Calcul des profit sur la position à couvrir
+        c_profit     = pd.DataFrame(n_g1 * g_1).diff(axis = 1).sum(axis = 1) 
+
+        # Calcul des profits d'intérêts
+        interest = pd.DataFrame(np.zeros((len(n_B), len(t))))
+        d_f      = np.exp(dt * r) - 1
+        for i in range(len(t) - 1):
+            interest[i+1] = (interest[i] + n_B[i]) * d_f
+
+        int_profit = interest.sum(axis = 1)
+
+        # Calcul des profits totaux
+        profit[j]  =  S_profit + c_profit + int_profit
+    
+    return profit
+
+def plot_delta_hist(profit, info):
+
+    plt.style.use('seaborn-v0_8-deep')
+    figsize   = (15, 20)
+    fig, axes = plt.subplots(3, 2, figsize=figsize)
+    edges     = np.linspace(-1.25,2.25,100)
+
+    for i in range(3):
+        for j in range(2):
+            k = i * 2 + j 
+            plt.sca(axes[i, j])
+            plt.hist(profit[k], edges)
+            plt.xlabel("Valeur finale du compte de marge ($)")
+            plt.ylabel("")
+            axes[i, j].yaxis.set_label_position("right")
+            plt.axvline(x = np.mean(profit[k]), color='r', linestyle='--', linewidth=1)
+            plt.legend(["Moyenne"])
+            plt.title(
+                f"Histogramme de la valeur finale de compte de marge pour K={info['Strike'].iloc[k]}")
+            
+    plt.show()
+
+    return None
 
 
 #Définition des tic et toc pour le temps d'exécution
