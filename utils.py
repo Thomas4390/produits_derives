@@ -12,18 +12,37 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 def get_info():
+    """Return a DataFrame with the information of the options"""
+
     K = np.array([80, 90, 97.5, 102.5, 110, 120])
     Put = np.array([0.1900, 0.6907, 1.6529, 3.3409, 9.8399, 19.5805])
     return pd.DataFrame(np.vstack([K, Put]).T, columns=["Strike", "Put"])
 
 
 def d1(S: float, K: float, r: float, y: float, T: float, sigma: float) -> float:
-    """Calculate d1 from the Black, Merton and Scholes formula"""
+    """Calculate d1 from the Black, Merton and Scholes formula
+
+    Parameters:
+        S : Underlying price
+        K : Strike price
+        r : Risk-free rate
+        y : Dividend yield
+        T : Time to maturity
+        sigma : Volatility
+    Returns:
+        d1 : the d1 parameter of the BMS formula
+    """
     return (np.log(S / K) + (r - y + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
 
 
 def d2(S: float, K: float, r: float, y: float, T: float, sigma: float):
-    """Calculate d2 from the Black, Merton and Scholes formula"""
+    """Calculate d2 from the Black, Merton and Scholes formula
+
+    Parameters:
+        S, K, r, y, T, sigma : as usual
+    Returns:
+        d2 : the d2 parameter of the BMS formula
+        """
     return (np.log(S / K) + (r - y - 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
 
 
@@ -36,7 +55,14 @@ def delta(
     sigma: float,
     is_call: bool = False,
 ) -> float:
-    """Return Black, Merton, Scholes delta of the European (call, put)"""
+    """Return Black, Merton, Scholes delta of the European (call, put)
+
+    Parameters:
+        S, K, r, y, T, sigma : as usual
+        is_call : True if the option is a call, False if it is a put
+    Returns:
+        delta : the delta of the option
+        """
 
     _d1 = d1(S=S, K=K, r=r, y=y, T=T, sigma=sigma)
     d_sign = np.where(is_call, 1, -1)
@@ -44,7 +70,13 @@ def delta(
 
 
 def gamma(S: float, K: float, r: float, y: float, T: float, sigma: float) -> float:
-    """Return Black, Merton, Scholes gamma of the European call or put"""
+    """Return Black, Merton, Scholes gamma of the European call or put
+
+    Parameters:
+        S, K, r, y, T, sigma : as usual
+    Returns:
+        gamma : the gamma of the option
+        """
     _d1 = d1(S=S, K=K, r=r, y=y, T=T, sigma=sigma)
     return np.exp(-y * T) * norm.pdf(_d1) / (S * sigma * np.sqrt(T))
 
@@ -59,7 +91,15 @@ def option_price(
     is_call: bool = False,
     ret_delta: bool = False,
 ) -> tuple[float | Any, Any] | float | Any:
-    """Return Black, Merton, Scholes price of the European option"""
+    """Return Black, Merton, Scholes price of the European option
+
+    Parameters:
+        S, K, r, y, T, sigma : as usual
+        is_call : True if the option is a call, False if it is a put
+        ret_delta : True if the delta of the option is also returned
+    Returns:
+        premium : the premium of the option
+        """
 
     _d1 = d1(S=S, K=K, r=r, y=y, T=T, sigma=sigma)
     _d2 = _d1 - sigma * np.sqrt(T)
@@ -85,7 +125,16 @@ def implied_volatility(
     is_call: bool = False,
     init_vol: float = 0.6,
 ) -> tuple[ndarray, dict, int, str]:
-    """Inverse the BMS formula numerically to find the implied volatility"""
+    """Inverse the BMS formula numerically to find the implied volatility
+
+    Parameters:
+        opt_price : the price of the option
+        S, K, r, y, T : as usual
+        is_call : True if the option is a call, False if it is a put
+        init_vol : the initial guess for the implied volatility
+    Returns:
+        sigma : the implied volatility
+        """
 
     def pricing_error(sig):
         sig = abs(sig)
@@ -98,6 +147,12 @@ def implied_volatility(
 
 
 def antithetic_normal(n_periods: int, n_paths: int):
+    """Generate antithetic standard normal shocks
+    Parameters:
+        n_periods : the number of time steps in the simulation
+        n_paths   : the number of paths in the simulation
+        """
+
     assert n_paths % 2 == 0, "n_paths must be an even number"
     n2 = int(n_paths / 2)
     z = np.random.normal(0, 1, (n_periods, n2))
@@ -130,7 +185,11 @@ def simulate_underlying(
 
 
 def plot_implied_vol(S: ndarray, info: pd.DataFrame) -> None:
-    """Plot implied vol. for question 1"""
+    """Plot implied vol. for question 1
+    Parameters:
+        S : the underlying price
+        info : the dataframe containing the option data
+        """
     plt.plot(info["Strike"] / S, info["Implied vol."], "o--")
     plt.xlabel(r"$\frac{K}{S_0}$", fontweight="bold")
     plt.ylabel("Sigma", fontweight="bold")
@@ -144,7 +203,15 @@ def plot_implied_vol(S: ndarray, info: pd.DataFrame) -> None:
 def CRR_tree(
     S: float, K: float, T: float, r: float, sigma: float, Type: int = 0, N: int = 1000
 ) -> float:
-    """Compute the call or put price with CRR tree"""
+    """Compute the call or put price with CRR tree
+
+    Parameters:
+        S, K, T, r, sigma : as usual
+        Type : 0 for European, 1 for American
+        N : number of steps
+    Returns:
+        f[0, 0] : the price of the option after CRR tree simulation
+        """
 
     # Calcul préliminaire
     dt = T / N
@@ -189,7 +256,16 @@ def CRR_tree_BD(
     ret_gamma: bool = False,
 ):
     """Compute the call or put price with CRR tree adjusted
-    with the Broadie and Detemple correction."""
+    with the Broadie and Detemple correction.
+
+    Parameters:
+        S, K, T, r, sigma : as usual
+        Type : 0 for European, 1 for American
+        N : number of steps
+        ret_gamma : if True, return the gamma of the option
+    Returns:
+        f[0, 0] : the price of the option after CRR tree simulation
+        """
 
     # Calcul préliminaire
     dt = T / N
@@ -254,7 +330,15 @@ def CRR_tree_df(
     Type: int = 0,
     N_Range: ndarray = np.arange(2, 101, 1),
 ):
-    """Iterates over all puts and converts to Data Frame"""
+    """Compute the call or put price with CRR tree for a dataframe of parameters.
+
+    Parameters:
+        S, K (series), T, r, sigma (series)
+        Type : 0 for European, 1 for American
+        N_Range : range of N to compute
+    Returns:
+        df_crr : dataframe of the price of the option after CRR tree simulation
+        """
 
     crr_values = np.array(
         [
@@ -284,7 +368,17 @@ def CRR_tree_BD_df(
     N_Range: ndarray = np.arange(2, 101, 1),
     ret_gamma: bool = False,
 ):
-    """Iterates over all puts and converts to Data Frame (with adjusmtment)"""
+    """Compute the call or put price with CRR tree adjusted
+    with the Broadie and Detemple correction for a dataframe of parameters.
+
+    Parameters:
+        S, K (series), T, r, sigma (series)
+        Type : 0 for European, 1 for American
+        N_Range : range of N to compute
+        ret_gamma : if True, return the gamma of the option
+    Returns:
+        df_crr : dataframe of the price of the option after CRR tree simulation
+        """
     if not ret_gamma:
         crr_values = np.array(
             [
@@ -366,7 +460,17 @@ def plot_CRR_tree(
     zoom_factor: int = 20,
     cross: bool = False,
 ):
-    """Plot results for question 2"""
+    """Plot the CRR tree for a list of dataframe of CRR tree.
+
+    Parameters:
+        df_CRR_list : list of dataframe of CRR tree
+        N_Range : range of N to compute
+        bps : bps to add to the theoretical price of BMS
+        zoom_factor : zoom factor for the plot. Increase zoom_factor to zoom in
+        cross : if True, plot the cross of the tree
+    Returns:
+        None
+        """
 
     plt.style.use("seaborn-v0_8-deep")
     info = get_info()
@@ -451,7 +555,17 @@ def plot_gamma(
     bps: float = 0.0001,
     zoom_factor: int = 20,
 ) -> None:
-    """Plot results for question 3 (gamma)"""
+    """Plot the gamma of the CRR tree for a list of dataframe of CRR tree.
+
+    Parameters:
+        gammas : list of dataframe of gamma
+        gamma_bms : dataframe of gamma of BMS
+        N_Range : range of N to compute
+        bps : bps to add to the theoretical price of BMS
+        zoom_factor : zoom factor for the plot. Increase zoom_factor to zoom in
+    Returns:
+        None
+        """
 
     plt.style.use("seaborn-v0_8-deep")
     info = get_info()
@@ -505,6 +619,19 @@ def delta_hedging(
     sigma_0: float,
     info: pd.DataFrame
 ) -> pd.DataFrame:
+    """Compute the profit of a delta hedging strategy.
+
+    Parameters:
+        S_t : array of simulated stock prices
+        T : maturity
+        dt : time step
+        r : risk free rate
+        sigma_0 : initial volatility
+        info : dataframe of the puts
+    Returns:
+        profit : dataframe of the profit of the delta hedging strategy
+        """
+
 
     # Initialisation des vecteurs de temps et du DF de profits
     S_simul = S_t.T
@@ -561,6 +688,14 @@ def delta_hedging(
 
 
 def plot_delta_hist(profit: pd.DataFrame, info: pd.DataFrame) -> None:
+    """Plot the histogram of the final value of the account for the delta hedging strategy.
+
+    Parameters:
+        profit : dataframe of the profit of the delta hedging strategy
+        info : dataframe of the puts
+    Returns:
+        None
+        """
 
     plt.style.use("seaborn-v0_8-deep")
     figsize = (15, 20)
