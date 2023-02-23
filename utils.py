@@ -472,7 +472,7 @@ def plot_CRR_tree(
         None
         """
 
-    plt.style.use("seaborn-v0_8-deep")
+    
     info = get_info()
     figsize = (15, 20)
     fig, axes = plt.subplots(3, 2, figsize=figsize)
@@ -567,7 +567,7 @@ def plot_gamma(
         None
         """
 
-    plt.style.use("seaborn-v0_8-deep")
+    
     info = get_info()
     figsize = (15, 20)
     fig, axes = plt.subplots(3, 2, figsize=figsize)
@@ -697,7 +697,7 @@ def plot_delta_hist(profit: pd.DataFrame, info: pd.DataFrame) -> None:
         None
         """
 
-    plt.style.use("seaborn-v0_8-deep")
+    
     figsize = (15, 20)
     fig, axes = plt.subplots(3, 2, figsize=figsize)
     edges = np.linspace(-1.25, 2.25, 100)
